@@ -1,23 +1,17 @@
 import std/[os, strutils, strformat]
 
-const 
-  rMax = 12
-  gMax = 13
-  bMax = 14
 
-type 
-  Counts = object
-    r,g,b: int
-  GameDef = object 
-    id: int
-    samples: seq[Counts]
+type Counts = object
+  r, g, b: int
 
-proc extractGame(line: string): tuple[id: int, samplestr: string] =
+const lim = Counts(r:12, g:13, b:14)
+
+template extractGame(line: string): tuple[id: int, samplestr: string] =
   let parts = line.split(": ", 2)
   let gparts = parts[0].split(' ')
   (gparts[1].parseInt, parts[1])
 
-proc extractSamples(s: string): seq[Counts] =
+template extractSamples(s: string): seq[Counts] = block:
   var allCounts = newSeq[Counts]()
   for sample in s.split("; "):
     var counts: Counts 
@@ -30,31 +24,48 @@ proc extractSamples(s: string): seq[Counts] =
         else: discard
     allCounts.add counts 
   allCounts
-  
-proc parseline (line: string): tuple[id, r, g, b: int] =
-  var r, g, b: int = 0
-  let (id, samplestr) = extractGame line
-  let samples = extractSamples samplestr
-  for sample in samples:
-    r = max(sample.r, r)
-    g = max(sample.g, g)
-    b = max(sample.b, b)
-  (id, r, g, b)
 
-proc linescore (line: string): int = 
-  let (id, r, g, b) = parseline line
-  if r>rMax or g>gMax or b>bMax: return 0
-  id
+template adjust(color: var int, val: int) = color = color.max val
 
-proc parse*(fn: string): int = 
-  var sum = 0
+template adjustAll(cur, val: Counts) =
+  cur.r.adjust val.r
+  cur.g.adjust val.g
+  cur.b.adjust val.b
+
+template parseline (line: string): tuple[id: int, c: Counts] = block:
+  let 
+    (id, samplestr) = extractGame line
+    samples = extractSamples samplestr
+    fst = samples[0]
+
+  var c: Counts = fst
+
+  for sample in samples[1..high samples]:
+    adjustAll(c, sample)
+
+  (id, c)
+
+template linescore (line: string): tuple[p1, p2: int] = block: 
+  let (id, c) = parseline line
+  let p1 = if c.r > lim.r or c.g > lim.g or c.b > lim.b: 0 else: id
+  let p2 = c.r * c.g * c.b
+  (p1, p2)
+
+template parse*(fn: string): tuple[p1, p2: int] = 
+  var s1, s2 = 0
   for line in lines fn:
-    let score = linescore line
-    sum += score
-  sum
+    let (p1, p2) = linescore line
+    s1 += p1
+    s2 += p2
+  (s1, s2)
 
-when isMainModule:
+proc run() =
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1) 
-  echo parse(params[0])
+  let (part1, part2) = parse(params[0])
+  echo "Scores: "
+  echo "    Part 1: {part1}".fmt
+  echo "    Part 2: {part2}".fmt
 
+when isMainModule: 
+  run()
