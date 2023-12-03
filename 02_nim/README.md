@@ -21,6 +21,9 @@ This was a fun challenge to watch evolve.
     * Pythonistas are fond of the term `Pythonic` for idiomatic python 
     * We should start using the term `Pythonicky` to describe the problematic
       idioms of python. This proc totally feels pythonicky. I don't like it.
+      * perhaps this is because i really dislike python's `str.join(array)` 
+        rather than `array.join(string)`. Python isn't unique here, but I 
+        really don't like that convention.
     * this is perhaps because i've been calling it as `fn.lines`. 
       `lines fn` and `lines(fn)` may have better in this case - 
       (UFCS)[https://en.wikipedia.org/wiki/Uniform_Function_Call_Syntax] 
@@ -31,4 +34,3 @@ This was a fun challenge to watch evolve.
     * i do think `lines fn` makes more sense than `fn.lines`, and kinda feels
       like an `undo` of the pythonicky. I love that nim leaves the decision of
       "what's most readable" up to the programmer, rather than the language. `UFCS` is awesome.
-
