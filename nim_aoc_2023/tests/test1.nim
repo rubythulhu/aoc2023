@@ -7,6 +7,6 @@
 
 import unittest
 
-import nimaoc02
-test "can add":
-  check add(5, 5) == 10
+import nim_aoc_2023pkg/submodule
+test "correct welcome":
+  check getWelcomeMessage() == "Hello, World!"
