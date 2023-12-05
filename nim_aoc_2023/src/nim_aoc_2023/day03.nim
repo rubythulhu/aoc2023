@@ -7,46 +7,60 @@ import std / strformat
 import std / strutils
 import std / sugar
 
-const 
+const
   sampleData = staticRead "../../inputs/03/sample.txt"
   SymbolChars = PunctuationChars - {'.'}
 
-type 
+type
   ItemKind* = enum dot, sym, digit
-  Item* = object 
+  Item* = object
     kind*: ItemKind
     ch*: char
 
   SchematicError* = object of ValueError
-    
-  Position* = tuple[x,y: int]
-  Dimensions* = tuple[w,h: int]
-  NumSpan* = tuple[x,y,sz,val: int]
-  SymLoc* = tuple[x,y: int, ch: char]
 
-  NeighborIterResult = tuple[x,y,idx: int, item: Item]
+  Position* = tuple[x, y: int]
+  Dimensions* = tuple[w, h: int]
+  NumSpan* = tuple[x, y, sz, val: int]
+  SymLoc* = tuple[x, y: int, ch: char]
 
-  Schematic* = object 
+  NeighborIterResult = tuple[x, y, idx: int, item: Item]
+
+  Schematic* = object
     dim*: Dimensions
     data*: seq[Item]
     nums*: seq[NumSpan]
     syms*: seq[SymLoc]
 
 
-proc `~@`*(pos: Position, dim: Dimensions): int = (pos.x + dim.w * pos.y)
-proc `@~`*(val: int, dim: Dimensions): Position = (val div dim.w, val mod dim.w)
+proc `~@`*(pos: Position, dim: Dimensions): int =
+  (pos.x + dim.w * pos.y)
 
-proc `[]`*(sch: Schematic, pos: Position): Item = sch.data[pos ~@ sch.dim]
-proc `[]`*(sch: Schematic, x,y: int): Item = sch[(x,y)]
-proc `[]`*(sch: Schematic, idx: int): Item = sch[idx @~ sch.dim]
+proc `@~`*(val: int, dim: Dimensions): Position =
+  (val div dim.w, val mod dim.w)
 
-proc `[]=`*(sch: var Schematic, pos: Position, item: Item) = sch.data[pos ~@ sch.dim] = item
-proc `[]=`*(sch: var Schematic, x,y: int, item: Item) = sch[(x,y)] = item
-proc `[]=`*(sch: var Schematic, idx: int, item: Item) = sch[idx @~ sch.dim] = item
+proc `[]`*(sch: Schematic, pos: Position): Item =
+  sch.data[pos ~@ sch.dim]
 
-proc cellCount*(dim:Dimensions): int = ( dim.w * dim.h ) - 1
+proc `[]`*(sch: Schematic, x, y: int): Item =
+  sch[(x, y)]
 
-iterator cells*(dim: Dimensions): tuple[x,y, idx: int] =
+proc `[]`*(sch: Schematic, idx: int): Item =
+  sch[idx @~ sch.dim]
+
+proc `[]=`*(sch: var Schematic, pos: Position, item: Item) = 
+  sch.data[pos ~@ sch.dim] = item
+
+proc `[]=`*(sch: var Schematic, x, y: int, item: Item) = 
+  sch[(x, y)] = item
+
+proc `[]=`*(sch: var Schematic, idx: int, item: Item) = 
+  sch[idx @~ sch.dim] = item
+
+proc cellCount*(dim: Dimensions): int =
+  (dim.w * dim.h) - 1
+
+iterator cells*(dim: Dimensions): tuple[x, y, idx: int] =
   for y in 0 .. dim.h - 1:
     for x in 0 .. dim.w - 1:
       let idx = (x, y) ~@ dim
@@ -60,67 +74,71 @@ proc initItem*(ch: char): Item =
   of '.': Item(kind: dot, ch: ch)
   else: raise SchematicError.newException "not a valid schematic thingy: " & ch
 
-proc hasLen*(s:string): bool = 
+proc hasLen*(s: string): bool =
   s.len > 0
 
 
-iterator neighbors(sch: Schematic, pos: Position, sz: int, withSelf = false): NeighborIterResult =
+iterator neighbors(sch: Schematic, pos: Position, sz: int,
+    withSelf = false): NeighborIterResult =
   for y in pos.y - 1 .. pos.y + 1:
     for x in pos.x - 1 .. pos.x + sz:
-      let idx = (x,y) ~@ sch.dim 
+      let idx = (x, y) ~@ sch.dim
       if idx notin 0..sch.data.len-1: continue
       if x notin 0..sch.dim.w-1: continue
       if y notin 0..sch.dim.h-1: continue
-      let 
+      let
         isLine = y == pos.y
         isInRange = x in pos.x .. pos.x + sz - 1
         isSelf = isLine and isInRange
         item = sch.data[idx]
-      
-      if isSelf and withSelf: yield (x,y,idx,item)
-      elif not isSelf: yield (x,y,idx,item)
 
-iterator neighbors(sch: Schematic, num: NumSpan, withSelf = false): NeighborIterResult =
+      if isSelf and withSelf: yield (x, y, idx, item)
+      elif not isSelf: yield (x, y, idx, item)
+
+iterator neighbors(sch: Schematic, num: NumSpan,
+    withSelf = false): NeighborIterResult =
   for it in sch.neighbors((num.x, num.y), num.sz, withSelf): yield it
 
-iterator neighbors(sch: Schematic, pos: Position, withSelf = false): NeighborIterResult =
+iterator neighbors(sch: Schematic, pos: Position,
+    withSelf = false): NeighborIterResult =
   for it in sch.neighbors(pos, 1, withSelf): yield it
 
-iterator neighbors(sch: Schematic, sym: SymLoc, withSelf = false): NeighborIterResult =
+iterator neighbors(sch: Schematic, sym: SymLoc,
+    withSelf = false): NeighborIterResult =
   for it in sch.neighbors((sym.x, sym.y), 1, withSelf): yield it
 
 proc isPartNumber(sch: Schematic, num: NumSpan): bool =
   var ct = 0
 
-  for x, y, idx, item in sch.neighbors(num): 
-    if item.kind == sym: 
+  for x, y, idx, item in sch.neighbors(num):
+    if item.kind == sym:
       inc ct
 
   ct > 0
 
 proc isBroken(sch: Schematic, sym: SymLoc): Option[int] =
-  if sym.ch != '*': return none int 
-  type Candidate = tuple[x,y,idx: int]
-  var candidates : seq[Candidate] = @[]
+  if sym.ch != '*': return none int
+  type Candidate = tuple[x, y, idx: int]
+  var candidates: seq[Candidate] = @[]
   for x, y, idx, item in sch.neighbors(sym):
-    if item.kind == digit: 
-      candidates.add (x,y,idx)
+    if item.kind == digit:
+      candidates.add (x, y, idx)
 
   if candidates.len < 2: return none int
 
   # var seen : seq[NumSpan] = @[]
-  var seen : set[int16] = {}
-  var vals : seq[int] = @[]
+  var seen: set[int16] = {}
+  var vals: seq[int] = @[]
 
   # echo "{sym=} {candidates=}".fmt
-  
+
   for c in candidates:
     for num in sch.nums:
       if num.y != c.y: continue
       if c.x notin num.x .. num.x + num.sz - 1: continue
 
       let idx = int16((num.x, num.y) ~@ sch.dim)
-      if idx notin seen: 
+      if idx notin seen:
         seen.incl idx
         vals.add num.val
 
@@ -135,15 +153,16 @@ proc parts*(sch: Schematic): seq[int] =
 proc broken*(sch: Schematic): seq[int] =
   var b = newSeq[int]()
   for sym in sch.syms:
-    let res = sch.isBroken sym 
-    if issome res: 
+    let res = sch.isBroken sym
+    if issome res:
       b.add get res
   b
 
-proc extract(data: seq[Item], dim: Dimensions): tuple[nums: seq[NumSpan], syms: seq[SymLoc]] = 
-  type State = enum In,Out
-  var 
-    state = Out 
+proc extract(data: seq[Item], dim: Dimensions): tuple[nums: seq[NumSpan],
+    syms: seq[SymLoc]] =
+  type State = enum In, Out
+  var
+    state = Out
     cur: NumSpan = (0, 0, 0, 0)
     curstr = ""
     nums = newSeq[NumSpan]()
@@ -151,38 +170,38 @@ proc extract(data: seq[Item], dim: Dimensions): tuple[nums: seq[NumSpan], syms: 
 
   template endWord() =
     cur.val = curstr.parseInt
-    nums.add cur 
+    nums.add cur
     cur = (0, 0, 0, 0)
     curstr = ""
     state = Out
 
-  for (x,y,idx) in dim.cells:
+  for (x, y, idx) in dim.cells:
     var item = data[idx]
-    if x == 0 and state == In: 
+    if x == 0 and state == In:
       endWord()
-    
+
     # let ch = item.ch
     # if y == 0: echo "\n"
     # echo "{x=},{y=},{idx=},{ch=}: {state=} > {cur=} {curstr=} ".fmt
-    
-    if item.kind == digit: 
+
+    if item.kind == digit:
       case state:
       of In:
-        curstr.add item.ch 
+        curstr.add item.ch
         cur.sz = curstr.len
       of Out:
         curstr = $item.ch
         cur = (x, y, 1, 0)
         state = In
 
-    else: 
+    else:
       if item.kind == sym:
-        syms.add (x,y,item.ch)
+        syms.add (x, y, item.ch)
       case state:
       of In: endWord()
       of Out: discard
 
-  if cur.x != 0: 
+  if cur.x != 0:
     cur.val = curstr.parseInt
     nums.add cur
 
@@ -192,11 +211,11 @@ proc `$`*(sch: Schematic): string =
   var digits, dots, symbols = 0
   for item in sch.data:
     case item.kind
-    of digit: inc digits 
+    of digit: inc digits
     of dot: inc dots
     of sym: inc symbols
 
-  let data = sch.data.mapIt(it.ch).join ""
+  # let data = sch.data.mapIt(it.ch).join ""
   let nums = sch.nums.mapIt("    @ {(it.x,it.y)} : {it.val} ({it.sz}) ({sch.isPartNumber it})".fmt).join "\n"
   let syms = sch.syms.mapIt("    @ {(it.x,it.y)} : {it.ch} ".fmt).join "\n"
   """
@@ -208,9 +227,9 @@ proc `$`*(sch: Schematic): string =
     nums: {'\n'}{nums}
     syms: {'\n'}{syms}
   ]
-  """.fmt 
+  """.fmt
 
-proc initSchematic*(input: string): Schematic = 
+proc initSchematic*(input: string): Schematic =
   let
     lines = input.split(Newlines).filter hasLen
     height = lines.len
@@ -219,20 +238,20 @@ proc initSchematic*(input: string): Schematic =
   var chars = newSeq[Item]()
 
   for line in lines:
-    if line.len != width: 
+    if line.len != width:
       raise SchematicError.newException "All lines must be the same width"
-    chars.add line.items.toSeq.map initItem 
-    
-  let (nums, syms) = chars.extract( (width, height) )
+    chars.add line.items.toSeq.map initItem
+
+  let (nums, syms) = chars.extract( (width, height))
 
   Schematic(dim: (width, height), data: chars, nums: nums, syms: syms)
 
 
-proc day03*(input: string): tuple[part1: int, part2: int] = 
-  let 
+proc day03*(input: string): tuple[part1: int, part2: int] =
+  let
     sch = initSchematic(input)
     p = sch.parts
-    b = sch.broken 
+    b = sch.broken
 
   (p.foldl(a + b), if b.len > 0: b.foldl(a+b) else: 0)
 
@@ -249,7 +268,7 @@ when isMainModule:
 
 when isMainModule:
   let params = commandLineParams()
-  if params.len != 1: quit("give me a file name", 1) 
+  if params.len != 1: quit("give me a file name", 1)
   let (p1sum, p2sum) = params[0].readFile.day03
   echo "part1: {p1sum=}".fmt
   echo "part2: {p2sum=}".fmt
