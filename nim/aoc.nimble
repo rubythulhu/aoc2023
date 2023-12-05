@@ -8,9 +8,9 @@ srcDir        = "src"
 installExt    = @["nim"]
 binDir        = "bin"
 
-namedBin["nim_aoc_2023/day01"] = "day01"
-namedBin["nim_aoc_2023/day02"] = "day02"
-namedBin["nim_aoc_2023/day03"] = "day03"
+namedBin["aoc/day01"] = "day01"
+namedBin["aoc/day02"] = "day02"
+namedBin["aoc/day03"] = "day03"
 
 # Dependencies
  
