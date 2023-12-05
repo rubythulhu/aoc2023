@@ -7,6 +7,3 @@
 
 import unittest
 
-import nim_aoc_2023pkg/submodule
-test "correct welcome":
-  check getWelcomeMessage() == "Hello, World!"
