@@ -1,5 +1,6 @@
 # i had a thing here but i am going to start over :)
 
+import std / options
 import std / os
 import std / sequtils
 import std / strformat
@@ -21,11 +22,15 @@ type
   Position* = tuple[x,y: int]
   Dimensions* = tuple[w,h: int]
   NumSpan* = tuple[x,y,sz,val: int]
+  SymLoc* = tuple[x,y: int, ch: char]
+
+  NeighborIterResult = tuple[x,y,idx: int, item: Item]
 
   Schematic* = object 
     dim*: Dimensions
     data*: seq[Item]
     nums*: seq[NumSpan]
+    syms*: seq[SymLoc]
 
 
 proc `~@`*(pos: Position, dim: Dimensions): int = (pos.x + dim.w * pos.y)
@@ -58,49 +63,91 @@ proc initItem*(ch: char): Item =
 proc hasLen*(s:string): bool = 
   s.len > 0
 
+
+iterator neighbors(sch: Schematic, pos: Position, sz: int, withSelf = false): NeighborIterResult =
+  for y in pos.y - 1 .. pos.y + 1:
+    for x in pos.x - 1 .. pos.x + sz:
+      let idx = (x,y) ~@ sch.dim 
+      if idx notin 0..sch.data.len-1: continue
+      if x notin 0..sch.dim.w-1: continue
+      if y notin 0..sch.dim.h-1: continue
+      let 
+        isLine = y == pos.y
+        isInRange = x in pos.x .. pos.x + sz - 1
+        isSelf = isLine and isInRange
+        item = sch.data[idx]
+      
+      if isSelf and withSelf: yield (x,y,idx,item)
+      elif not isSelf: yield (x,y,idx,item)
+
+iterator neighbors(sch: Schematic, num: NumSpan, withSelf = false): NeighborIterResult =
+  for it in sch.neighbors((num.x, num.y), num.sz, withSelf): yield it
+
+iterator neighbors(sch: Schematic, pos: Position, withSelf = false): NeighborIterResult =
+  for it in sch.neighbors(pos, 1, withSelf): yield it
+
+iterator neighbors(sch: Schematic, sym: SymLoc, withSelf = false): NeighborIterResult =
+  for it in sch.neighbors((sym.x, sym.y), 1, withSelf): yield it
+
 proc isPartNumber(sch: Schematic, num: NumSpan): bool =
-  let xrange = num.x .. num.x + num.sz - 1
-  var neighbors = 0
-  # var derp= "\n"
+  var ct = 0
+
+  for x, y, idx, item in sch.neighbors(num): 
+    if item.kind == sym: 
+      inc ct
+
+  ct > 0
+
+proc isBroken(sch: Schematic, sym: SymLoc): Option[int] =
+  if sym.ch != '*': return none int 
+  type Candidate = tuple[x,y,idx: int]
+  var candidates : seq[Candidate] = @[]
+  for x, y, idx, item in sch.neighbors(sym):
+    if item.kind == digit: 
+      candidates.add (x,y,idx)
+
+  if candidates.len < 2: return none int
+
+  # var seen : seq[NumSpan] = @[]
+  var seen : set[int16] = {}
+  var vals : seq[int] = @[]
+
+  # echo "{sym=} {candidates=}".fmt
   
-  for y in num.y-1..num.y + 1:
-    for x in num.x-1..num.x + num.sz:
-      let idx = (x,y) ~@ sch.dim
-      # echo "{x=} {y=} {idx=}".fmt
-      if idx < 0 or 
-        idx > sch.data.len-1 or 
-        x < 0 or 
-        x > sch.dim.w-1 or
-        y < 0 or 
-        y > sch.dim.h-1: 
-          # derp.add "\e[1;31m✖\e[0m"
-          continue 
-      # echo "  ch={sch.data[idx].ch}".fmt
-      let item = sch.data[idx] 
+  for c in candidates:
+    for num in sch.nums:
+      if num.y != c.y: continue
+      if c.x notin num.x .. num.x + num.sz - 1: continue
 
-      # derp.add if item.ch in Digits: "\e[0;1;36m{item.ch}\e[0m".fmt
-      #   elif item.ch in SymbolChars: "\e[0;1;32m{item.ch}\e[0m".fmt
-      #   else : $item.ch
-      if y == num.y and x in xrange: 
-        # derp.add "\e[0;1;31m"
-        continue
-      if item.kind == sym: inc neighbors
-    # derp.add "\n"
+      let idx = int16((num.x, num.y) ~@ sch.dim)
+      if idx notin seen: 
+        seen.incl idx
+        vals.add num.val
 
-  # echo "{num=} {neighbors=} {derp=}".fmt
+  # echo "{seen=}".fmt
+  if seen.len == 2: some vals[0] * vals[1]
+  else: none int
 
-  neighbors > 0
 
 proc parts*(sch: Schematic): seq[int] =
   sch.nums.filterIt(sch.isPartNumber it).mapIt(it.val)
 
-proc findNums(data: seq[Item], dim: Dimensions): seq[NumSpan] = 
+proc broken*(sch: Schematic): seq[int] =
+  var b = newSeq[int]()
+  for sym in sch.syms:
+    let res = sch.isBroken sym 
+    if issome res: 
+      b.add get res
+  b
+
+proc extract(data: seq[Item], dim: Dimensions): tuple[nums: seq[NumSpan], syms: seq[SymLoc]] = 
   type State = enum In,Out
   var 
     state = Out 
     cur: NumSpan = (0, 0, 0, 0)
     curstr = ""
     nums = newSeq[NumSpan]()
+    syms = newSeq[SymLoc]()
 
   template endWord() =
     cur.val = curstr.parseInt
@@ -129,6 +176,8 @@ proc findNums(data: seq[Item], dim: Dimensions): seq[NumSpan] =
         state = In
 
     else: 
+      if item.kind == sym:
+        syms.add (x,y,item.ch)
       case state:
       of In: endWord()
       of Out: discard
@@ -137,9 +186,9 @@ proc findNums(data: seq[Item], dim: Dimensions): seq[NumSpan] =
     cur.val = curstr.parseInt
     nums.add cur
 
-  nums
+  (nums, syms)
 
-proc `$`(sch: Schematic): string =
+proc `$`*(sch: Schematic): string =
   var digits, dots, symbols = 0
   for item in sch.data:
     case item.kind
@@ -149,6 +198,7 @@ proc `$`(sch: Schematic): string =
 
   let data = sch.data.mapIt(it.ch).join ""
   let nums = sch.nums.mapIt("    @ {(it.x,it.y)} : {it.val} ({it.sz}) ({sch.isPartNumber it})".fmt).join "\n"
+  let syms = sch.syms.mapIt("    @ {(it.x,it.y)} : {it.ch} ".fmt).join "\n"
   """
   [Schematic:
     Dimensions: {sch.dim.w} x {sch.dim.h}
@@ -156,6 +206,7 @@ proc `$`(sch: Schematic): string =
     dots: {dots}
     symbols: {symbols}
     nums: {'\n'}{nums}
+    syms: {'\n'}{syms}
   ]
   """.fmt 
 
@@ -172,30 +223,36 @@ proc initSchematic*(input: string): Schematic =
       raise SchematicError.newException "All lines must be the same width"
     chars.add line.items.toSeq.map initItem 
     
-  let nums = chars.findNums( (width, height) )
+  let (nums, syms) = chars.extract( (width, height) )
 
-  Schematic(dim: (width, height), data: chars, nums: nums)
+  Schematic(dim: (width, height), data: chars, nums: nums, syms: syms)
 
 
-proc day03part1*(input: string): int = 
-  let sch = initSchematic(input)
-  # echo $sch
-  let p = sch.parts
-  # echo "{p=}".fmt
-  p.foldl(a + b)
+proc day03*(input: string): tuple[part1: int, part2: int] = 
+  let 
+    sch = initSchematic(input)
+    p = sch.parts
+    b = sch.broken 
+
+  (p.foldl(a + b), if b.len > 0: b.foldl(a+b) else: 0)
+
+
 
 
 when isMainModule:
   block:
-    let sum = day03part1 sampleData
-    echo "sample / part1: {sum=}".fmt
+    let (p1sum, p2sum) = day03 sampleData
+    echo "sample / part1: {p1sum=}".fmt
+    echo "sample / part2: {p2sum=}".fmt
     # echo sampleData
 
 
 when isMainModule:
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1) 
-  let sum = params[0].readFile.day03part1
-  echo "part1: {sum=}".fmt
+  let (p1sum, p2sum) = params[0].readFile.day03
+  echo "part1: {p1sum=}".fmt
+  echo "part2: {p2sum=}".fmt
+  assert p1sum == 521601, "answer regression"
 
 
