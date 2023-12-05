@@ -1,5 +1,5 @@
 import unittest
-import aoc/day03 
+import aoc/day03
 
 const data1: string = "..33.\n1@...\n.1.4\n...%\n"
 

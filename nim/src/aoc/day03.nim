@@ -48,13 +48,13 @@ proc `[]`*(sch: Schematic, x, y: int): Item =
 proc `[]`*(sch: Schematic, idx: int): Item =
   sch[idx @~ sch.dim]
 
-proc `[]=`*(sch: var Schematic, pos: Position, item: Item) = 
+proc `[]=`*(sch: var Schematic, pos: Position, item: Item) =
   sch.data[pos ~@ sch.dim] = item
 
-proc `[]=`*(sch: var Schematic, x, y: int, item: Item) = 
+proc `[]=`*(sch: var Schematic, x, y: int, item: Item) =
   sch[(x, y)] = item
 
-proc `[]=`*(sch: var Schematic, idx: int, item: Item) = 
+proc `[]=`*(sch: var Schematic, idx: int, item: Item) =
   sch[idx @~ sch.dim] = item
 
 proc cellCount*(dim: Dimensions): int =

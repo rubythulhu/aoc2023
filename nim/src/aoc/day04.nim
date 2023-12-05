@@ -32,7 +32,7 @@ proc actualScore(card: Card): int =
   (card.winning * card.yours).len
 
 proc day04(input: string): tuple[p1score, p2cards: int] =
-  var 
+  var
     p1score = 0
     p2cards = 0
 
@@ -46,11 +46,11 @@ proc day04(input: string): tuple[p1score, p2cards: int] =
     card.winning = parts[1].parseNums
     card.yours = parts[2].parseNums
     totals.inc card.num
-    let sc = card.score 
+    let sc = card.score
     let ac = card.actualScore
     let n = card.num
     for j in n + 1 .. n + ac:
-        totals.inc(j, totals[n])
+      totals.inc(j, totals[n])
     p1score.inc sc
 
   for ct in totals.values:
