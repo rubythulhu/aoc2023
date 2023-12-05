@@ -30,7 +30,6 @@ proc score(card: Card): int =
 
 proc day04(input: string): int =
   var totalScore = 0
-  var cards = newSeq[Card]()
   let lines = input.split(Newlines)
   for line in lines.filterIt(it.len > 0):
     var card = Card(num: 0, winning: initIntSet(), yours: initIntSet())
