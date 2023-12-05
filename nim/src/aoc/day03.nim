@@ -1,11 +1,6 @@
 # i had a thing here but i am going to start over :)
 
-import std / options
-import std / os
-import std / sequtils
-import std / strformat
-import std / strutils
-import std / sugar
+import std / [options, os, sequtils, strformat, strutils]
 
 const
   sampleData = staticRead "../../inputs/03/sample.txt"

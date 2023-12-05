@@ -1,4 +1,4 @@
-import std / [os, options, strutils, strformat, syncio, strtabs]
+import std / [os, options, strutils, syncio, strtabs]
 
 var textual = {
   "zero": "0",
