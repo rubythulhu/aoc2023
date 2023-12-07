@@ -5,12 +5,10 @@ const
 
 type
   MapRule = object
+    ## this is the "core" "meaty-bit" of this challenge.
     src: int
     dst: int
     size: int
-
-    # tuple[sourceLocation,destinationLocation,size: int, src, dst: HSlice[int,int]]
-    ## this is the "core" "meaty-bit" of this challenge.
 
   MapRules = seq[MapRule]
     ## Convenience Alias
