@@ -102,17 +102,13 @@ proc initAlmanac(input: string): Almanac =
   s.alm
 
 proc locationOf(almanac: Almanac, seed: int): int =
-  var
-    cur = "seed"
-    map = Mapping()
-    loc = seed
+  var loc = seed
 
   for map in almanac.maps:
     for rule in map.rules:
       if loc in rule.src .. rule.src + rule.size - 1:
         loc = loc - rule.src + rule.dst
         break
-
 
   loc
 
@@ -122,14 +118,9 @@ proc min(almanac: Almanac): int =
     .min
 
 proc rangePairsMin(almanac: Almanac): int =
-  var lowest = -1
+  var lowest = almanac.seedranges[0].a
   for range in almanac.seedranges:
-    echo "range {range} size: {range.b - range.a}:".fmt
-    let ra = float(range.a)
-    let rb = float(range.b)
-    let rl = rb - ra
     for i in range:
-      if i mod (10*1024*1024) == 0 : echo "hi {i} {round(((float(i)-ra)) / rl * 100) }% ({float(i)-ra} of {rl})".fmt
       let loc = almanac.locationOf i
       if lowest == -1 or loc < lowest:
         lowest = loc
