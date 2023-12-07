@@ -27,7 +27,7 @@ type
 
   Almanac = object  ## full representation of puzzle input
     seeds: seq[int] ## the initial seeds
-    seedranges: seq[HSlice[int,int]]
+    seedranges: seq[HSlice[int, int]]
     maps: Mappings  ## table of maps
 
   ParsingStateCurState = enum Bored, Cartographing
@@ -44,7 +44,7 @@ template addDigit (v, c: untyped): untyped =
 
 proc endSeed(s: var ParsingState) =
   if s.num != 0:
-    s.alm.seeds.add s.num 
+    s.alm.seeds.add s.num
     s.num = 0
 
 proc initAlmanac(input: string): Almanac =
@@ -68,10 +68,10 @@ proc initAlmanac(input: string): Almanac =
     of Bored:
       if input.scanp(s.idx, ("seeds:", +(' ', (+{'0'..'9'} -> addDigit(s.num,
           $_))) -> s.endSeed(), '\L') -> s.endSeed()):
-            for i, val in s.alm.seeds.pairs:
-              if i mod 2 == 1: continue 
-              s.alm.seedranges.add val .. val + s.alm.seeds[i+1]
-            continue
+        for i, val in s.alm.seeds.pairs:
+          if i mod 2 == 1: continue
+          s.alm.seedranges.add val .. val + s.alm.seeds[i+1]
+        continue
 
       elif input.scanp(s.idx, (+{'a' .. 'z'} -> s.map.src.add $_), "-to-", (+{
           'a' .. 'z'} -> s.map.dst.add $_), " map:", '\L'):
@@ -80,11 +80,11 @@ proc initAlmanac(input: string): Almanac =
         continue
 
     of Cartographing:
-      if input.scanp(s.idx, 
+      if input.scanp(s.idx,
             (+{'0' .. '9'}) -> addDigit(s.rule.dst, $_), ' ') and
-          input.scanp(s.idx, 
+          input.scanp(s.idx,
             (+{'0' .. '9'}) -> addDigit(s.rule.src, $_), ' ') and
-          input.scanp(s.idx, 
+          input.scanp(s.idx,
             (+{'0' .. '9'}) -> addDigit(s.rule.size, $_), '\L'):
         s.map.rules.add s.rule
         s.rule = MapRule() # 196
