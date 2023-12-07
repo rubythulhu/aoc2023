@@ -21,8 +21,9 @@ type
     dst: string
     rules: MapRules
 
-  Mappings = Table[string, Mapping]
+  Mappings = seq[Mapping]
     ## Table b/c makes traversing ez
+
 
   Almanac = object  ## full representation of puzzle input
     seeds: seq[int] ## the initial seeds
@@ -52,13 +53,14 @@ proc initAlmanac(input: string): Almanac =
   var
     s = ParsingState(curState: Bored)
 
+
   while true:
     # echo "<<<", input[s.idx .. min(s.idx + 20, input.len-1)], "...>>> "
     # echo s.idx, ", ", input.len-1, ": ", s.curState
     if input.scanp(s.idx, '\L'):
       s.curState = Bored
       if s.map.rules.len > 0:
-        s.alm.maps[s.map.src] = s.map
+        s.alm.maps.add s.map
         s.map = Mapping()
       continue
 
@@ -92,7 +94,7 @@ proc initAlmanac(input: string): Almanac =
       raise LibraryError.newException "no more parsing rules but not at eof? idx={s.idx} len={input.len} rest={input[s.idx..input.len-1]}".fmt
 
     if s.map.rules.len > 0:
-      s.alm.maps[s.map.src] = s.map
+      s.alm.maps.add s.map
       s.map = Mapping()
 
     break
@@ -105,17 +107,11 @@ proc locationOf(almanac: Almanac, seed: int): int =
     map = Mapping()
     loc = seed
 
-  while true:
-    if cur notin almanac.maps:
-      break
-    map = almanac.maps[cur]
-    cur = map.dst
+  for map in almanac.maps:
     for rule in map.rules:
       if loc in rule.src .. rule.src + rule.size - 1:
         loc = loc - rule.src + rule.dst
         break
-      else:
-        discard
 
 
   loc
@@ -133,7 +129,7 @@ proc rangePairsMin(almanac: Almanac): int =
     let rb = float(range.b)
     let rl = rb - ra
     for i in range:
-      if i mod (1024*1024) == 0 : echo "hi {i} {round(((float(i)-ra)) / rl * 100) }% ({float(i)-ra} of {rl})".fmt
+      if i mod (10*1024*1024) == 0 : echo "hi {i} {round(((float(i)-ra)) / rl * 100) }% ({float(i)-ra} of {rl})".fmt
       let loc = almanac.locationOf i
       if lowest == -1 or loc < lowest:
         lowest = loc
