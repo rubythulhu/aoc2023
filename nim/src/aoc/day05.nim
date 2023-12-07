@@ -1,4 +1,4 @@
-import std/[tables, sequtils, strformat, strutils, strscans, os]
+import std/[tables, sequtils, strformat, strutils, strscans, os, math]
 
 const
   sampleData = staticRead "../../inputs/05/sample.txt"
@@ -26,15 +26,15 @@ type
 
   Almanac = object  ## full representation of puzzle input
     seeds: seq[int] ## the initial seeds
+    seedranges: seq[HSlice[int,int]]
     maps: Mappings  ## table of maps
 
-  ParsingStateKind = enum Bored, Cartographing
+  ParsingStateCurState = enum Bored, Cartographing
   ParsingState = object
-    kind: ParsingStateKind
+    curState: ParsingStateCurState
     idx: int
     alm: Almanac
     num: int
-    str: string
     map: Mapping
     rule: MapRule
 
@@ -43,44 +43,47 @@ template addDigit (v, c: untyped): untyped =
 
 proc endSeed(s: var ParsingState) =
   if s.num != 0:
-    s.alm.seeds.add s.num
+    s.alm.seeds.add s.num 
     s.num = 0
 
 proc initAlmanac(input: string): Almanac =
   # echo "{input=}".fmt
 
   var
-    s = ParsingState(kind: Bored)
+    s = ParsingState(curState: Bored)
 
   while true:
     # echo "<<<", input[s.idx .. min(s.idx + 20, input.len-1)], "...>>> "
-    # echo s.idx, ", ", input.len-1, ": ", s.kind
+    # echo s.idx, ", ", input.len-1, ": ", s.curState
     if input.scanp(s.idx, '\L'):
-      s.kind = Bored
+      s.curState = Bored
       if s.map.rules.len > 0:
         s.alm.maps[s.map.src] = s.map
         s.map = Mapping()
       continue
 
-    case s.kind:
+    case s.curState:
     of Bored:
       if input.scanp(s.idx, ("seeds:", +(' ', (+{'0'..'9'} -> addDigit(s.num,
           $_))) -> s.endSeed(), '\L') -> s.endSeed()):
-        # echo "seeds: {s.alm.seeds}".fmt
-        continue
+            for i, val in s.alm.seeds.pairs:
+              if i mod 2 == 1: continue 
+              s.alm.seedranges.add val .. val + s.alm.seeds[i+1]
+            continue
 
       elif input.scanp(s.idx, (+{'a' .. 'z'} -> s.map.src.add $_), "-to-", (+{
           'a' .. 'z'} -> s.map.dst.add $_), " map:", '\L'):
-        s.kind = Cartographing
+        s.curState = Cartographing
         # echo "starting map: src={s.map.src} dst={s.map.dst}".fmt
         continue
 
     of Cartographing:
-      if input.scanp(s.idx, (+{'0' .. '9'}) -> addDigit(s.rule.dst, $_),
-          ' ') and
-         input.scanp(s.idx, (+{'0' .. '9'}) -> addDigit(s.rule.src, $_),
-             ' ') and
-         input.scanp(s.idx, (+{'0' .. '9'}) -> addDigit(s.rule.size, $_), '\L'):
+      if input.scanp(s.idx, 
+            (+{'0' .. '9'}) -> addDigit(s.rule.dst, $_), ' ') and
+          input.scanp(s.idx, 
+            (+{'0' .. '9'}) -> addDigit(s.rule.src, $_), ' ') and
+          input.scanp(s.idx, 
+            (+{'0' .. '9'}) -> addDigit(s.rule.size, $_), '\L'):
         s.map.rules.add s.rule
         s.rule = MapRule() # 196
         continue
@@ -118,12 +121,29 @@ proc locationOf(almanac: Almanac, seed: int): int =
   loc
 
 proc min(almanac: Almanac): int =
-  almanac.seeds.mapIt(almanac.locationOf it).min
+  almanac.seeds
+    .mapIt(almanac.locationOf it)
+    .min
+
+proc rangePairsMin(almanac: Almanac): int =
+  var lowest = -1
+  for range in almanac.seedranges:
+    echo "range {range} size: {range.b - range.a}:".fmt
+    let ra = float(range.a)
+    let rb = float(range.b)
+    let rl = rb - ra
+    for i in range:
+      if i mod (1024*1024) == 0 : echo "hi {i} {round(((float(i)-ra)) / rl * 100) }% ({float(i)-ra} of {rl})".fmt
+      let loc = almanac.locationOf i
+      if lowest == -1 or loc < lowest:
+        lowest = loc
+  lowest
 
 when isMainModule:
   block:
     let almanac = initAlmanac sampleData
     echo "sample/day05-part1: {almanac.min}".fmt
+    echo "sample/day05-part2: {almanac.rangePairsMin}".fmt
 
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1)
@@ -131,5 +151,9 @@ when isMainModule:
     almanac = initAlmanac readFile params[0]
     lowest = almanac.min
 
-  echo "Answer: {lowest}".fmt
+  echo "day05-part1: {lowest}".fmt
+  let
+    lowestRP = almanac.rangePairsMin
+
+  echo "day05-part2: {lowestRP}".fmt
 
