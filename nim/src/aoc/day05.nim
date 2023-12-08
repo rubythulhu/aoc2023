@@ -116,13 +116,23 @@ proc min(almanac: Almanac): int =
     .min
 
 proc rangePairsMin(almanac: Almanac): int =
-  var lowest = almanac.seedranges[0].a
+  var lowest = almanac.locationOf almanac.seedranges[0].a
   for range in almanac.seedranges:
     for i in range:
       let loc = almanac.locationOf i
       if lowest == -1 or loc < lowest:
         lowest = loc
   lowest
+
+proc `$`(almanac: Almanac): string =
+  var s = ""
+  for seed in almanac.seeds:
+    s.add "seed: {seed}\n"
+  for map in almanac.maps:
+    s.add "map: {map.src} -> {map.dst}\n"
+    for rule in map.rules:
+      s.add "  rule: {rule.src} -> {rule.dst} ({rule.size})\n"
+  s
 
 when isMainModule:
   block:
@@ -132,13 +142,10 @@ when isMainModule:
 
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1)
-  let
-    almanac = initAlmanac readFile params[0]
-    lowest = almanac.min
+  let almanac = initAlmanac readFile params[0]
 
+  let lowest = almanac.min
   echo "day05-part1: {lowest}".fmt
-  let
-    lowestRP = almanac.rangePairsMin
 
+  let lowestRP = almanac.rangePairsMin
   echo "day05-part2: {lowestRP}".fmt
-
