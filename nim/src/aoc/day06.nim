@@ -91,7 +91,6 @@ when isMainModule:
     assert race == (71530, 940200)
     assert race.winningStrategies == 71503
 
-
 when isMainModule:
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1)

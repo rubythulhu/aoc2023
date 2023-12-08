@@ -14,7 +14,7 @@ namedBin["aoc/day03"] = "day03"
 namedBin["aoc/day04"] = "day04"
 namedBin["aoc/day05"] = "day05"
 namedBin["aoc/day06"] = "day06"
-
+namedBin["aoc/day07"] = "day07"
 
 # Dependencies
 
