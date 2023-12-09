@@ -80,7 +80,7 @@ proc initRaceBadKerning(input: string): Race =
     else: raise LibraryError.newException "what: " & line
   (time, distance)
 
-when isMainModule:
+when isMainModule and not defined(release):
   block:
     let races = initRaces(sampleData)
     assert races == @[(7, 9), (15, 40), (30, 200)]
