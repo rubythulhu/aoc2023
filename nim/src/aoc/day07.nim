@@ -1,4 +1,5 @@
 import std/[
+  algorithm,
   os,
   sequtils,
   strformat,
@@ -14,7 +15,7 @@ type
   HandData = array[5, Card]
   HandType = enum HighCard, Pair, TwoPairs, ThreeOfAKind, FullHouse,
     FourOfAKind, FiveOfAKind
-  HandComparison = enum Win, Lose, Tie
+  HandComparison = enum Lose = -1, Tie = 0, Win = 1
   Hand = object
     data: HandData
     handType: HandType
@@ -51,9 +52,14 @@ proc compareHandTypes(a, b: HandType): HandComparison =
   else: result = Lose
 
 proc compareSameHandType(a, b: HandData): HandComparison =
-  for idx, card in a:
-    if card > b[idx]: result = Win
-    elif card < b[idx]: result = Lose
+  for idx, aCard in a:
+    let bCard = b[idx]
+    if aCard > bCard:
+      result = Win
+      return
+    elif aCard < bCard:
+      result = Lose
+      return
   result = Tie
 
 proc compareHandData(a, b: HandData): HandComparison =
@@ -63,6 +69,9 @@ proc compareHandData(a, b: HandData): HandComparison =
 
   if at != bt: result = compareHandTypes(at, bt)
   else: result = compareSameHandType(a, b)
+
+proc sortPlayers(a, b: Player): int =
+  compareHandData(a.hand.data, b.hand.data).ord
 
 proc charToCard(ch: char): Card {.inline.} =
   case ch
@@ -97,6 +106,12 @@ proc cardToChar(card: Card): char {.inline.} =
   of cK: result = 'K'
   of cA: result = 'A'
 
+proc gameResults(game: Game): int =
+  result = 0
+  for i, player in game.sorted(sortPlayers):
+    result.inc (i + 1) * player.bid
+
+
 proc initHand(handStr: string): Hand =
   var handData: array[0..4, Card]
   for i in 0..4:
@@ -119,7 +134,7 @@ proc initGame(input: string): Game =
 when isMainModule and not defined(release):
   block:
     let game = initGame sampleData
-    echo $game
+    assert game.gameResults == 6440
     # TODO: add sample data checks
     discard
 
