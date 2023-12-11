@@ -8,13 +8,17 @@ import std/[
   tables,
 ]
 
+# i am unsure what's wrong with my p2 solution, but i keep getting
+# wrong answers, despite sample data giving correct answers?
+# i'm moving on for now (in shame) w/ part2 broken for day7
+
 const
   sampleData = staticRead "../../inputs/07/sample.txt"
 
 type
 
-  Card = enum c2, c3, c4, c5, c6, c7, c8, c9, c10, cJ, cQ, cK, cA
-  WildCard = enum cJ, c2, c3, c4, c5, c6, c7, c8, c9, c10, cQ, cK, cA
+  Card = enum c2 = 1, c3, c4, c5, c6, c7, c8, c9, c10, cJ, cQ, cK, cA
+  WildCard = enum cJ = 1, c2, c3, c4, c5, c6, c7, c8, c9, c10, cQ, cK, cA
   HandData = array[5, Card]
   WildHandData = array[5, WildCard]
   HandType = enum HighCard, Pair, TwoPairs, ThreeOfAKind, FullHouse,
@@ -23,7 +27,6 @@ type
   Hand = object
     data: HandData
     wild: WildHandData
-    handType: HandType
   Player = object
     hand: Hand
     bid: int
@@ -45,7 +48,7 @@ proc toWildCard(card: Card): WildCard =
   of cK: result = cK
   of cA: result = cA
 
-proc `$`(game: Game): string =
+proc `$`*(game: Game): string =
   "Game(\n" & game.mapIt("  " & $it).join("\n") & "\n)"
 
 proc handType[T](hand: openArray[T]): HandType =
@@ -75,6 +78,7 @@ proc compareHandTypes(a, b: HandType): HandComparison =
 proc compareSameHandType[T](a, b: openArray[T]): HandComparison =
   for idx, aCard in a:
     let bCard = b[idx]
+    # echo "check {aCard} {bCard} {acard>bcard} {acard==bcard} {acard<bcard}".fmt
     if aCard > bCard:
       result = Win
       return
@@ -91,12 +95,16 @@ proc compareHandData[T](a, b: openArray[T]): HandComparison =
   if at != bt: result = compareHandTypes(at, bt)
   else: result = compareSameHandType(a, b)
 
-
 proc sortPlayers(a, b: Player): int =
   compareHandData(a.hand.data, b.hand.data).ord
 
 proc sortPlayersWild(a, b: Player): int =
-  compareHandData(a.hand.wild, b.hand.wild).ord
+  var
+    at = a.hand.wild.handType
+    bt = b.hand.wild.handType
+
+  if at != bt: result = compareHandTypes(at, bt).ord
+  else: result = compareSameHandType(a.hand.data, b.hand.data).ord
 
 proc toCard(ch: char): Card {.inline.} =
   case ch
@@ -115,22 +123,6 @@ proc toCard(ch: char): Card {.inline.} =
   of 'A': result = cA
   else: quit "invalid card"
 
-proc toChar(card: Card): char {.inline.} =
-  case card
-  of c2: result = '2'
-  of c3: result = '3'
-  of c4: result = '4'
-  of c5: result = '5'
-  of c6: result = '6'
-  of c7: result = '7'
-  of c8: result = '8'
-  of c9: result = '9'
-  of c10: result = 'T'
-  of cJ: result = 'J'
-  of cQ: result = 'Q'
-  of cK: result = 'K'
-  of cA: result = 'A'
-
 proc toWildHandData(handData: HandData): WildHandData =
   for i in 0..4:
     result[i] = handData[i].toWildCard
@@ -148,8 +140,15 @@ proc bestWildcardHand(handData: HandData): WildHandData =
 
 proc gameResultsWild(game: Game): int =
   result = 0
+  var
+    score = 0
+    last = game[0]
   for i, player in game.sorted(sortPlayersWild):
-    result.inc (i + 1) * player.bid
+    if i == 0 or compareHandData(player.hand.wild, last.hand.wild) == Win:
+      score.inc
+    last = player
+    # echo "player {i + 1} score: {score} hand: {player.hand.data} wild: {player.hand.wild} type: {player.hand.data.handType} wildtype: {player.hand.wild.handType} bid: {player.bid}".fmt
+    result.inc score * player.bid
 
 proc gameResults(game: Game): int =
   result = 0
@@ -164,7 +163,6 @@ proc initHand(handStr: string): Hand =
 
   result.data = handData
   result.wild = handData.bestWildcardHand
-  result.handType = handType result.data
 
 proc initGame(input: string): Game =
   for line in input.splitLines():
@@ -180,8 +178,15 @@ proc initGame(input: string): Game =
 when isMainModule and not defined(release):
   block:
     let game = initGame sampleData
-    assert game.gameResults == 6440
-    assert game.gameResultsWild == 5905
+    let
+      results = game.gameResults
+      resultsWild = game.gameResultsWild
+    # echo "sample: {results} {resultsWild}".fmt
+    assert results == 6440
+    assert resultsWild == 5905
+    # echo game.sorted sortPlayersWild
+    # echo game.gameResults
+    # echo game.gameResultsWild
     # TODO: add sample data checks
     discard
 
@@ -189,5 +194,13 @@ when isMainModule:
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1)
   let game = initGame readFile params[0]
-  echo "day07/part1: {game.gameResults}".fmt
-  echo "day07/part2: {game.gameResultsWild}"
+  # echo game.sorted sortPlayersWild
+  # echo game.gameResults
+  # echo game.gameResultsWild
+  let results = game.gameResults
+  echo "day07/part1: {results}".fmt
+
+  let resultsWild = game.gameResultsWild
+  echo "day07/part2: {resultsWild}".fmt
+  assert resultsWild != 246213569
+  assert resultsWild != 246196695
