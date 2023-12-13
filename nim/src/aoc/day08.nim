@@ -51,13 +51,15 @@ proc steps(challenge: Challenge): int =
   var
     cur = challenge.first
     steps = 0
+    seen = initCountTable[(NodeID, Direction)]()
   while true:
-    let dir = challenge.directions[steps mod 3]
+    let dir = challenge.directions[steps mod challenge.directions.len]
     inc steps
+
     let nxt: NodeID =
       if dir == Left: challenge.left[cur]
       else: challenge.right[cur]
-    # echo "cur: {challenge.lookupRev[cur]}, dir: {dir} nxt: {challenge.lookupRev[nxt]}".fmt
+    # echo "cur: {challenge.lookupRev[cur]}, dir: {dir} nxt: {challenge.lookupRev[nxt]} {steps=}".fmt
 
     if nxt == challenge.last:
       return steps
@@ -122,4 +124,6 @@ when isMainModule and not defined(release):
 when isMainModule:
   let params = commandLineParams()
   if params.len != 1: quit("give me a file name", 1)
-  let races = initChallenge readFile params[0]
+  let day8 = initChallenge readFile params[0]
+  let stepcount = day8.steps
+  echo "part1: {stepcount}".fmt
